@@ -85,7 +85,7 @@ defmodule ExProxyServer.SocketHandler do
   defp connect2remote(encrypted, key) do
     case MessageEncryptor.decrypt(encrypted, key, @sign_secret) do
       {:ok, data} -> connect2remote(data)
-      {:error, error} -> {:error, error}
+      :error -> {:error, :decrypt_error}
     end
   end
 
