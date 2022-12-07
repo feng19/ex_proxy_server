@@ -1,2 +1,6 @@
-assets/node_modules/
-deps/
+_build
+test
+deps
+.idea
+tmp
+.formatter.exs
