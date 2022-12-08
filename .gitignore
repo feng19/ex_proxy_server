@@ -27,3 +27,6 @@ ex_proxy_server-*.tar
 /tmp
 .idea
 *.iml
+Makefile
+/rel/
+/config/
