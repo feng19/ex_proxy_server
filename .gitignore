@@ -29,4 +29,3 @@ ex_proxy_server-*.tar
 *.iml
 Makefile
 /rel/
-/config/
