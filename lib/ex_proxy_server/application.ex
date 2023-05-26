@@ -16,6 +16,7 @@ defmodule ExProxyServer.Application do
       {Plug.Cowboy,
        scheme: :http,
        plug: ExProxyServer,
+       ip: {0, 0, 0, 0},
        port: port,
        dispatch: dispatch(),
        transport_options: [num_acceptors: 10]}
