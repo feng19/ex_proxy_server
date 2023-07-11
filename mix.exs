@@ -25,8 +25,7 @@ defmodule ExProxyServer.MixProject do
 
   defp deps do
     [
-      {:plug_cowboy, "~> 2.4"},
-      {:bakeware, "~> 0.2", runtime: false}
+      {:plug_cowboy, "~> 2.4"}
     ]
   end
 
@@ -37,18 +36,11 @@ defmodule ExProxyServer.MixProject do
         cookie: "#{@app}_cookie",
         quiet: true,
         overwrite: true,
-        steps: [:assemble, &Bakeware.assemble/1],
-        include_erts: include_erts(),
+        steps: [:assemble],
+        include_erts: false,
         include_executables_for: [:unix],
         strip_beams: Mix.env() == :prod
       ]
     ]
-  end
-
-  defp include_erts do
-    case System.fetch_env("OTP_ERTS") do
-      {:ok, path} -> path
-      _ -> true
-    end
   end
 end
