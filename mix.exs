@@ -6,8 +6,8 @@ defmodule ExProxyServer.MixProject do
   def project do
     [
       app: @app,
-      version: "0.1.3",
-      elixir: "~> 1.11",
+      version: "0.2.0",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       default_release: @app,
@@ -25,7 +25,8 @@ defmodule ExProxyServer.MixProject do
 
   defp deps do
     [
-      {:plug_cowboy, "~> 2.4"}
+      {:bandit, "~> 1.7"},
+      {:websock_adapter, "~> 0.5"}
     ]
   end
 

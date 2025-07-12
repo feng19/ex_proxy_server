@@ -13,33 +13,10 @@ defmodule ExProxyServer.Application do
       end
 
     children = [
-      {Plug.Cowboy,
-       scheme: :http,
-       plug: ExProxyServer,
-       ip: {0, 0, 0, 0},
-       port: port,
-       dispatch: dispatch(),
-       transport_options: [num_acceptors: 10]}
+      {Bandit, scheme: :http, plug: ExProxyServer.Router, ip: {0, 0, 0, 0}, port: port}
     ]
 
     opts = [strategy: :one_for_one, name: ExProxyServer.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-
-  defp dispatch do
-    encrypt_setting =
-      Application.get_env(
-        @app,
-        :encrypt,
-        {:once, "90yT56qlvXmCdrrAnQsdb16HNm7lP6ySqi5tySHIr3o8C+Fr4B8URl5XH0NVssVI"}
-      )
-
-    [
-      {:_,
-       [
-         {"/ws", ExProxyServer.SocketHandler, [encrypt: encrypt_setting]},
-         {:_, Plug.Cowboy.Handler, {ExProxyServer.Router, []}}
-       ]}
-    ]
   end
 end

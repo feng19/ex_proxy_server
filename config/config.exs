@@ -1,4 +1,7 @@
 import Config
 
 config :logger, level: :info
-config :logger, :console, format: "$date $time [$level] $message\n"
+
+config :logger, :console,
+  # metadata: [:request_id, :module, :line],
+  format: "$time [$level] $message\n"

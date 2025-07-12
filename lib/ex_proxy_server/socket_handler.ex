@@ -1,7 +1,8 @@
 defmodule ExProxyServer.SocketHandler do
-  @behaviour :cowboy_websocket
+  @behaviour WebSock
   require Logger
   alias Plug.Crypto.MessageEncryptor
+  @app :ex_proxy_server
 
   @ipv4 0x01
   @ipv6 0x04
@@ -17,62 +18,64 @@ defmodule ExProxyServer.SocketHandler do
   @sign_secret "90de3456asxdfrtg"
 
   @impl true
-  def init(req, opts) do
+  def init(_opts) do
     {encrypt_type, key} =
-      case Keyword.get(opts, :encrypt, false) do
+      case Application.get_env(@app, :encrypt, false) do
         false -> {@encrypt_none, nil}
         {:once, key} when is_binary(key) -> {@encrypt_once, key}
         {:all, key} when is_binary(key) -> {@encrypt_all, key}
       end
 
-    {:cowboy_websocket, req, %{encrypt_type: encrypt_type, key: key, remote: nil}}
+    {:ok, %{encrypt_type: encrypt_type, key: key, remote: nil}}
   end
 
   @impl true
-  def websocket_handle({:binary, msg}, %{remote: nil, key: key} = state) do
+  def handle_in({encrypted, [opcode: :binary]}, %{encrypt_type: @encrypt_all, key: key} = state) do
+    case MessageEncryptor.decrypt(encrypted, key, @sign_secret) do
+      {:ok, msg} -> send2remote(msg, state)
+      :error -> {:stop, :normal, state}
+    end
+  end
+
+  def handle_in({msg, [opcode: :binary]}, %{remote: nil, key: key} = state) do
     case connect2remote(msg, key) do
       {:ok, remote} ->
         :ok = :inet.setopts(remote, active: :once)
-        {[], %{state | remote: remote}}
+        {:ok, %{state | remote: remote}}
 
       {:error, error} ->
         Logger.error(inspect(error))
-        {[:close], state}
+        {:stop, :normal, state}
     end
   end
 
-  def websocket_handle({:binary, encrypted}, %{encrypt_type: @encrypt_all, key: key} = state) do
-    case MessageEncryptor.decrypt(encrypted, key, @sign_secret) do
-      {:ok, msg} -> send2remote(msg, state)
-      :error -> {[:close], state}
-    end
-  end
+  def handle_in({msg, [opcode: :binary]}, state), do: send2remote(msg, state)
 
-  def websocket_handle({:binary, msg}, state), do: send2remote(msg, state)
-
-  def websocket_handle(_data, state) do
-    {[], state}
+  @impl true
+  def handle_control({binary, opcode}, state) do
+    Logger.warning("got opcode: #{opcode}, binary: #{inspect(binary)}")
+    {:ok, state}
   end
 
   @impl true
-  def websocket_info({:tcp, _socket, response}, %{encrypt_type: @encrypt_all, key: key} = state) do
+  def handle_info({:tcp, _socket, response}, %{encrypt_type: @encrypt_all, key: key} = state) do
     response
     |> MessageEncryptor.encrypt(key, @sign_secret)
     |> receive_from_remote(state)
   end
 
-  def websocket_info({:tcp, _socket, response}, state), do: receive_from_remote(response, state)
-  def websocket_info({:tcp_closed, _}, state), do: {[:close], state}
+  def handle_info({:tcp, _socket, response}, state), do: receive_from_remote(response, state)
+  def handle_info({:tcp_closed, _}, state), do: {:stop, :normal, state}
 
-  def websocket_info({:tcp_error, _, reason}, state) do
+  def handle_info({:tcp_error, _, reason}, state) do
     Logger.error(inspect(reason))
-    {[:close], state}
+    {:stop, :normal, state}
   end
 
-  def websocket_info(_Info, state), do: {[], state}
+  def handle_info(_Info, state), do: {:ok, state}
 
   @impl true
-  def terminate(_, _, %{remote: remote}) do
+  def terminate(_, %{remote: remote}) do
     if is_port(remote) do
       :gen_tcp.close(remote)
     end
@@ -118,16 +121,16 @@ defmodule ExProxyServer.SocketHandler do
   defp send2remote(msg, state) do
     case :gen_tcp.send(state.remote, msg) do
       :ok ->
-        {[], state}
+        {:ok, state}
 
       {:error, error} ->
         Logger.error(inspect(error))
-        {[:close], state}
+        {:stop, :normal, state}
     end
   end
 
   defp receive_from_remote(msg, state) do
     :ok = :inet.setopts(state.remote, active: :once)
-    {[{:binary, msg}], state}
+    {:reply, :from_remote_to_client, [{:binary, msg}], state}
   end
 end
