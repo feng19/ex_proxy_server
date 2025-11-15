@@ -6,14 +6,17 @@ defmodule ExProxyServer.MixProject do
   def project do
     [
       app: @app,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       default_release: @app,
-      releases: releases(),
-      preferred_cli_env: [release: :prod]
+      releases: releases()
     ]
+  end
+
+  def cli do
+    [preferred_envs: [release: :prod]]
   end
 
   def application do
